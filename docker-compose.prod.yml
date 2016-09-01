@@ -1,0 +1,43 @@
+version: '2'
+
+services:
+
+  django:
+    environment:
+      - DEBUG=False
+    networks:
+      - nginx
+    env_file:
+      - ./services/rabbit/prod.env
+      - ./services/postgres/prod.env
+      - ./services/django/prod.env
+    restart: unless-stopped
+    command: uwsgi --socket 0.0.0.0:8000 --module backend.wsgi
+
+  postgres:
+    env_file:
+      - ./services/postgres/prod.env
+    restart: unless-stopped
+
+  rabbit:
+    env_file:
+      - ./services/rabbit/prod.env
+    restart: unless-stopped
+
+  celery_worker:
+    env_file:
+      - ./services/rabbit/prod.env
+      - ./services/postgres/prod.env
+      - ./services/django/prod.env
+    restart: unless-stopped
+
+  celery_beat:
+    env_file:
+      - ./services/rabbit/prod.env
+      - ./services/django/prod.env
+    restart: unless-stopped
+
+networks:
+  nginx:
+    external:
+      name: general_nginx

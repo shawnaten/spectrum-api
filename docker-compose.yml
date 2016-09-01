@@ -1,0 +1,47 @@
+version: '2'
+
+services:
+  django:
+    build:
+      context: ./services/django
+    environment:
+      - DEBUG=False
+    networks:
+      - postgres
+      - rabbit
+
+  postgres:
+    image: postgres
+    networks:
+      - postgres
+
+  rabbit:
+    image: rabbitmq
+    hostname: rabbit
+    networks:
+      - rabbit
+
+  celery_worker:
+    build:
+      context: ./services
+      dockerfile: ./celery/Dockerfile
+    environment:
+      - DEBUG=False
+    command: [ "celery", "-A", "backend", "worker", "-l", "info" ]
+    networks:
+      - rabbit
+      - postgres
+
+  celery_beat:
+    build:
+      context: ./services
+      dockerfile: ./celery/Dockerfile
+    environment:
+      - DEBUG=False
+    command: [ "celery", "-A", "backend", "beat", "-l", "info" ]
+    networks:
+      - rabbit
+
+networks:
+  rabbit:
+  postgres:

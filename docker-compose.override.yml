@@ -1,0 +1,55 @@
+version: '2'
+
+services:
+
+  ngrok:
+    build:
+      context: ./services/ngrok
+    networks:
+      - ngrok
+    ports:
+      - 4040:4040
+    env_file:
+      - ./services/ngrok/.env
+
+  django:
+    volumes:
+      - ./services/django:/app
+    environment:
+      - DEBUG=True
+    networks:
+      - ngrok
+    ports:
+      - 80:8000
+    env_file:
+      - ./services/rabbit/dev.env
+      - ./services/postgres/dev.env
+      - ./services/django/dev.env
+    command: python manage.py runserver -v 0 0.0.0.0:8000
+
+  postgres:
+    env_file:
+      - ./services/postgres/dev.env
+
+  rabbit:
+    env_file:
+      - ./services/rabbit/dev.env
+
+  celery_worker:
+    volumes:
+      - ./services/django:/app
+    env_file:
+      - ./services/rabbit/dev.env
+      - ./services/postgres/dev.env
+      - ./services/django/dev.env
+    command: autoreload
+
+  celery_beat:
+    volumes:
+      - ./services/django/backend/settings.py:/app/backend/settings.py
+    env_file:
+      - ./services/rabbit/dev.env
+      - ./services/django/dev.env
+
+networks:
+  ngrok:
