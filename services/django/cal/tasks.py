@@ -7,7 +7,7 @@ from datetime import datetime, time, timezone
 
 import strict_rfc3339 as rfc3339
 
-from cal.models import Calendar, Event, RSVPSettings
+from cal.models import Calendar, Event, EventSettings
 
 
 @shared_task
@@ -28,7 +28,6 @@ def sync(name, cal_id):
             print("case 1")
             request = cal_api.events().list(
                 calendarId=cal_id,
-                timeMin=rfc3339.now_to_rfc3339_utcoffset(),
                 timeZone="UTC"
             )
         elif not calendar.page_token:
@@ -102,7 +101,7 @@ def process_events(calendar, events):
             defaults=values
         )
 
-        rsvp_settings, created = RSVPSettings.objects.get_or_create(
+        event_settings, created = EventSettings.objects.get_or_create(
             event=db_event
         )
 

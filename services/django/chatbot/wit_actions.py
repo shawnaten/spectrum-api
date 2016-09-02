@@ -8,7 +8,7 @@ from django.db import DataError
 
 from roster.models import Person
 from chatbot.models import Session, Message, SessionData
-from cal.models import Event, RSVP, Checkin
+from cal.models import Event, RSVP, Checkin, EventSettings
 from chatbot.tasks import send_sms
 
 
@@ -58,13 +58,13 @@ def rsvp(request):
     event_type = value(entities, session, "event")
 
     if not event_type:
-        context["not_found"] = "True"
+        context["not_found"] = True
 
     start = datetime_value(entities, session)
     if start:
         end = start + timedelta(days=1)
     if end and end < datetime.now(timezone.utc):
-        context["not_found"] = "True"
+        context["not_found"] = True
 
     try:
         if event_type and start:
@@ -75,38 +75,38 @@ def rsvp(request):
         elif event_type:
             event = Event.objects.get(summary__icontains=event_type)
     except (ObjectDoesNotExist, MultipleObjectsReturned) as err:
-        context["not_found"] = "True"
+        context["not_found"] = True
 
-    if "not_found" in context:
+    if "not_found" in context.keys():
         session.save()
         return context
 
-    rsvp_settings = event.rsvpsettings
-    rsvp_enabled = rsvp_settings.enabled
-    rsvp_limit = rsvp_settings.limit
-    rsvp_message = rsvp_settings.message
+    event_settings = event.eventsettings
+    rsvp_enabled = event_settings.rsvp_enabled
+    rsvp_limit = event_settings.rsvp_limit
+    rsvp_message = event_settings.rsvp_message
     rsvp_count = RSVP.objects.filter(event=event).count()
     rsvp_exists = RSVP.objects.filter(event=event, person=person).exists()
 
     if rsvp_intent == "count":
 
         if not rsvp_enabled:
-            context["disabled"] = "True"
+            context["disabled"] = True
         elif rsvp_count == 0:
-            context["none"] = "True"
+            context["none"] = True
         elif rsvp_count == 1:
-            context["single"] = "True"
+            context["single"] = True
         else:
             context["count"] = rsvp_count
 
     elif rsvp_intent == "rsvp" and not rsvp_exists:
 
         if not rsvp_enabled:
-            context["disabled"] = "True"
+            context["disabled"] = True
         elif event.start <= datetime.now(timezone.utc):
-            context["full"] = "True"
+            context["full"] = True
         elif rsvp_limit is not None and rsvp_count >= rsvp_limit:
-            context["full"] = "True"
+            context["full"] = True
         else:
             RSVP(event=event, person=person).save()
             context["summary"] = event.summary
@@ -116,12 +116,12 @@ def rsvp(request):
             send_sms.delay(person.id, rsvp_message)
 
     elif rsvp_intent == "rsvp" and rsvp_exists:
-        context["rsvp_dup"] = "True"
+        context["rsvp_dup"] = True
     elif rsvp_intent == "unrsvp" and rsvp_exists:
         RSVP.objects.filter(event=event, person=person).delete()
-        context["unrsvpd"] = "True"
+        context["unrsvpd"] = True
     else:
-        context["unrsvp_dup"] = "True"
+        context["unrsvp_dup"] = True
 
     session.finished = True
     session.save()
@@ -152,14 +152,27 @@ def checkin(request):
     short_code = value(entities, session, "short_code")
 
     try:
-        event = Event.objects.get(checkin_code=short_code)
+        event_settings = EventSettings.objects.get(short_code=short_code)
     except ObjectDoesNotExist as err:
-        context["failure"] = "True"
+        context["failure"] = True
+
+    checkin_enabled = event_settings.checkin_enabled
+    event = event_settings.event
+
+    if not checkin_enabled:
+        context["failure"] = True
+
+    now = datetime.now(timezone.utc)
+    cutoff = event.start + (event.end - event.start) / 2
+    if now < event.start or now > cutoff:
+        context["failure"] = True
+
+    if "failure" in context.keys():
         return context
 
     checkin_obj, was_created = Checkin.objects.get_or_create(
         person=person,
-        event=event
+        event=event_settings.event
     )
     context["success"] = True
 

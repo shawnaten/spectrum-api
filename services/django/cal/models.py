@@ -41,25 +41,25 @@ class Event(models.Model):
     end = models.DateTimeField()
     recurring = models.BooleanField()
 
-    checkin_code = models.CharField(max_length=4, default=gen_checkin_code)
-
     def __str__(self):
         return self.summary
 
 
-class RSVPSettings(models.Model):
+class EventSettings(models.Model):
     event = models.OneToOneField(
         Event,
         on_delete=models.CASCADE,
         primary_key=True
     )
-    enabled = models.BooleanField(default=False)
-    limit = models.IntegerField(null=True, blank=True)
-    message = models.CharField(blank=True, max_length=160)
+    short_code = models.CharField(max_length=4, default=gen_checkin_code)
+    rsvp_enabled = models.BooleanField(default=False)
+    rsvp_limit = models.IntegerField(null=True, blank=True)
+    rsvp_message = models.CharField(blank=True, max_length=160)
+    checkin_enabled = models.BooleanField(default=False)
 
     class Meta:
-        verbose_name = 'RSVP setting'
-        verbose_name_plural = 'RSVP settings'
+        verbose_name = 'Event setting'
+        verbose_name_plural = 'Event settings'
 
     def __str__(self):
         return str(self.event)
