@@ -13,7 +13,7 @@ from chatbot.tasks import send_sms
 
 
 def first_entity_value(entities, entity):
-    if entity not in entities:
+    if entity not in entities.keys():
         return ""
     val = entities[entity][0]["value"]
     if not val:
@@ -63,8 +63,8 @@ def rsvp(request):
     start = datetime_value(entities, session)
     if start:
         end = start + timedelta(days=1)
-    if end and end < datetime.now(timezone.utc):
-        context["not_found"] = True
+        if end < datetime.now(timezone.utc):
+            context["not_found"] = True
 
     try:
         if event_type and start:
@@ -155,19 +155,19 @@ def checkin(request):
         event_settings = EventSettings.objects.get(short_code=short_code)
     except ObjectDoesNotExist as err:
         context["failure"] = True
+        return context
 
     checkin_enabled = event_settings.checkin_enabled
     event = event_settings.event
 
     if not checkin_enabled:
         context["failure"] = True
+        return context
 
     now = datetime.now(timezone.utc)
     cutoff = event.start + (event.end - event.start) / 2
     if now < event.start or now > cutoff:
         context["failure"] = True
-
-    if "failure" in context.keys():
         return context
 
     checkin_obj, was_created = Checkin.objects.get_or_create(
