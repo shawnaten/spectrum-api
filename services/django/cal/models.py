@@ -41,6 +41,9 @@ class Event(models.Model):
     end = models.DateTimeField()
     recurring = models.BooleanField()
 
+    class Meta:
+        ordering = ['start']
+
     def __str__(self):
         return self.summary
 
@@ -60,6 +63,7 @@ class EventSettings(models.Model):
     class Meta:
         verbose_name = 'Event setting'
         verbose_name_plural = 'Event settings'
+        order_with_respect_to = 'event'
 
     def __str__(self):
         return str(self.event)
@@ -76,6 +80,7 @@ class RSVP(models.Model):
     class Meta:
         verbose_name = 'RSVP'
         verbose_name_plural = 'RSVP\'s'
+        order_with_respect_to = 'event'
 
     def __str__(self):
         return "{0} @ {1}".format(self.person, self.event)
@@ -88,3 +93,6 @@ class Checkin(models.Model):
         on_delete=models.CASCADE,
         primary_key=True
     )
+
+    class Meta:
+        order_with_respect_to = 'event'
