@@ -31,6 +31,6 @@ def process_sms(phone, text):
     except Exception as err:
         logging.error(traceback.format_exc())
         sys_message, created = Message.objects.get_or_create(
-            tag="generic error")
+            tag="wit_actions_error")
         send_sms.delay(person.id, sys_message.text)
         session.delete()
