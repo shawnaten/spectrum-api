@@ -43,6 +43,13 @@ def datetime_value(entities, session):
     return datetime.fromtimestamp(timestamp, timezone.utc)
 
 
+def finish(session, context, key, finished):
+    context[key] = True
+    session.finished = finished
+    session.save()
+    return context
+
+
 def send(request, response):
     session = Session.objects.get(id=request["session_id"])
     send_sms.delay(session.person.id, response["text"])
@@ -156,31 +163,30 @@ def checkin(request):
     try:
         event_settings = EventSettings.objects.get(short_code=short_code)
     except ObjectDoesNotExist as err:
-        context["failure"] = True
-        return context
+        return finish(session, context, "not_found", True)
 
     checkin_enabled = event_settings.checkin_enabled
     event = event_settings.event
 
     if not checkin_enabled:
-        context["failure"] = True
-        return context
+        return finish(session, context, "not_found", True)
 
     now = datetime.now(timezone.utc)
     cutoff = event.start + (event.end - event.start) / 2
-    if now < event.start or now > cutoff:
-        context["failure"] = True
-        return context
+    if now < event.start:
+        return finish(session, context, "early", True)
+    elif now > cutoff:
+        return finish(session, context, "late", True)
 
-    checkin_obj, was_created = Checkin.objects.get_or_create(
+    checkin_obj, is_new_checkin = Checkin.objects.get_or_create(
         person=person,
         event=event_settings.event
     )
-    context["success"] = True
 
-    session.finished = True
-    session.save()
-    return context
+    if not is_new_checkin:
+        return finish(session, context, "duplicate", True)
+
+    return finish(session, context, "success", True)
 
 actions = {
     'send': send,
