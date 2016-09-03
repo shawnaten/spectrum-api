@@ -63,19 +63,21 @@ def rsvp(request):
         return context
 
     start = datetime_value(entities, session)
-    if not start:
-        start = datetime.now(timezone.utc)
-    end = start + timedelta(days=1)
-    if end < datetime.now(timezone.utc):
-        context["not_found"] = True
-        session.save()
-        return context
+    if start:
+        end = start + timedelta(days=1)
+        if end < datetime.now(timezone.utc):
+            context["not_found"] = True
+            session.save()
+            return context
 
     try:
-        event = Event.objects.get(
-            summary__icontains=event_type,
-            start__range=[start, end]
-        )
+        if start:
+            event = Event.objects.get(
+                summary__icontains=event_type,
+                start__range=[start, end]
+            )
+        else:
+            event = Event.objects.get(summary__icontains=event_type)
     except (ObjectDoesNotExist, MultipleObjectsReturned) as err:
         context["not_found"] = True
         session.save()
