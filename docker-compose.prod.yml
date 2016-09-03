@@ -18,6 +18,8 @@ services:
     env_file:
       - ./services/postgres/prod.env
     restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   rabbit:
     env_file:
@@ -41,3 +43,6 @@ networks:
   nginx:
     external:
       name: general_nginx
+
+volumes:
+  postgres_data:

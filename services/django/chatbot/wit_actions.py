@@ -176,7 +176,14 @@ def checkin(request):
     if now < event.start:
         return finish(session, context, "early", True)
     elif now > cutoff:
-        return finish(session, context, "late", True)
+        checkin_exists = Checkin.objects.filter(
+            person=person,
+            event=event_settings.event
+        ).exists()
+        if checkin_exists:
+            return finish(session, context, "duplicate", True)
+        else:
+            return finish(session, context, "late", True)
 
     checkin_obj, is_new_checkin = Checkin.objects.get_or_create(
         person=person,
