@@ -43,9 +43,8 @@ def datetime_value(entities, session):
     return datetime.fromtimestamp(timestamp, timezone.utc)
 
 
-def finish(session, context, key, finished):
-    context[key] = True
-    session.finished = finished
+def finish(session, context, key, val=None):
+    context[key] = val if val is not None else True
     session.save()
     return context
 
@@ -61,34 +60,29 @@ def rsvp(request):
     session = Session.objects.get(id=request["session_id"])
     person = session.person
 
+    intent = value(entities, session, "intent")
     rsvp_intent = value(entities, session, "rsvp_intent")
-    event_type = value(entities, session, "event")
+    event_summary = value(entities, session, "event_summary")
 
-    if not event_type:
-        context["not_found"] = True
-        session.save()
-        return context
+    if not event_summary:
+        return finish(session, context, "not_found")
 
     start = datetime_value(entities, session)
     if start:
         end = start + timedelta(days=1)
         if end < datetime.now(timezone.utc):
-            context["not_found"] = True
-            session.save()
-            return context
+            return finish(session, context, "not_found")
 
     try:
         if start:
             event = Event.objects.get(
-                summary__icontains=event_type,
+                summary__icontains=event_summary,
                 start__range=[start, end]
             )
         else:
-            event = Event.objects.get(summary__icontains=event_type)
+            event = Event.objects.get(summary__icontains=event_summary)
     except (ObjectDoesNotExist, MultipleObjectsReturned) as err:
-        context["not_found"] = True
-        session.save()
-        return context
+        return finish(session, context, "not_found")
 
     event_settings = event.settings
     rsvp_enabled = event_settings.rsvp_enabled
@@ -100,41 +94,37 @@ def rsvp(request):
     if rsvp_intent == "count":
 
         if not rsvp_enabled:
-            context["disabled"] = True
+            return finish(session, context, "disabled")
         elif rsvp_count == 0:
-            context["none"] = True
+            return finish(session, context, "none")
         elif rsvp_count == 1:
-            context["single"] = True
+            return finish(session, context, "single")
         else:
-            context["count"] = rsvp_count
+            return finish(session, context, "count", rsvp_count)
 
     elif rsvp_intent == "rsvp" and not rsvp_exists:
 
         if not rsvp_enabled:
-            context["disabled"] = True
+            return finish(session, context, "disabled")
         elif event.start <= datetime.now(timezone.utc):
-            context["full"] = True
+            return finish(session, context, "full")
         elif rsvp_limit is not None and rsvp_count >= rsvp_limit:
-            context["full"] = True
+            return finish(session, context, "full")
         else:
             RSVP(event=event, person=person).save()
             context["summary"] = event.summary
             start = event.start.astimezone(timezone(-timedelta(hours=5)))
             context["time"] = datetime.strftime(start, "%a, %b %d, %I:%M %p")
-            context["location"] = event.location
             send_sms.delay(person.id, rsvp_message)
+            return finish(session, context, "location", event.location)
 
     elif rsvp_intent == "rsvp" and rsvp_exists:
-        context["rsvp_dup"] = True
+        return finish(session, context, "rsvp_dup")
     elif rsvp_intent == "unrsvp" and rsvp_exists:
         RSVP.objects.filter(event=event, person=person).delete()
-        context["unrsvpd"] = True
+        return finish(session, context, "unrsvpd")
     else:
-        context["unrsvp_dup"] = True
-
-    session.finished = True
-    session.save()
-    return context
+        return finish(session, context, "unrsvp_dup")
 
 
 def first_name(request):
@@ -163,27 +153,27 @@ def checkin(request):
     try:
         event_settings = EventSettings.objects.get(short_code=short_code)
     except ObjectDoesNotExist as err:
-        return finish(session, context, "not_found", True)
+        return finish(session, context, "not_found")
 
     checkin_enabled = event_settings.checkin_enabled
     event = event_settings.event
 
     if not checkin_enabled:
-        return finish(session, context, "not_found", True)
+        return finish(session, context, "not_found")
 
     now = datetime.now(timezone.utc)
     cutoff = event.start + (event.end - event.start) / 2
     if now < event.start:
-        return finish(session, context, "early", True)
+        return finish(session, context, "early")
     elif now > cutoff:
         checkin_exists = Checkin.objects.filter(
             person=person,
             event=event_settings.event
         ).exists()
         if checkin_exists:
-            return finish(session, context, "duplicate", True)
+            return finish(session, context, "duplicate")
         else:
-            return finish(session, context, "late", True)
+            return finish(session, context, "late")
 
     checkin_obj, is_new_checkin = Checkin.objects.get_or_create(
         person=person,
@@ -191,9 +181,9 @@ def checkin(request):
     )
 
     if not is_new_checkin:
-        return finish(session, context, "duplicate", True)
+        return finish(session, context, "duplicate")
 
-    return finish(session, context, "success", True)
+    return finish(session, context, "success")
 
 actions = {
     'send': send,
