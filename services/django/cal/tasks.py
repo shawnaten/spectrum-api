@@ -25,20 +25,18 @@ def sync(name, cal_id):
         )
 
         if not calendar.sync_token and not calendar.page_token:
-            print("case 1")
             request = cal_api.events().list(
                 calendarId=cal_id,
+                timeMin=rfc3339.now_to_rfc3339_utcoffset(),
                 timeZone="UTC"
             )
         elif not calendar.page_token:
-            print("case 2")
             request = cal_api.events().list(
                 calendarId=cal_id,
                 timeZone="UTC",
                 syncToken=calendar.sync_token
             )
         else:
-            print("case 3")
             request = cal_api.events().list(
                 calendarId=cal_id,
                 timeZone="UTC",
