@@ -12,7 +12,10 @@ def gen_id():
 
 class Message(models.Model):
     tag = models.CharField(max_length=100)
-    text = models.TextField(default="🤖 Whoops this message is empty.")
+    text = models.CharField(
+        max_length=160,
+        default="🤖 Whoops this message is empty."
+    )
 
     def __str__(self):
         return self.tag
