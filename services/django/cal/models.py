@@ -53,7 +53,8 @@ class EventSettings(models.Model):
         Event,
         on_delete=models.CASCADE,
         primary_key=True,
-        related_name="settings"
+        related_name="settings",
+        editable=False
     )
     short_code = models.CharField(max_length=4, default=gen_checkin_code)
     rsvp_enabled = models.BooleanField(default=False)
@@ -62,38 +63,41 @@ class EventSettings(models.Model):
     checkin_enabled = models.BooleanField(default=False)
 
     class Meta:
-        verbose_name = 'Event setting'
-        verbose_name_plural = 'Event settings'
-        order_with_respect_to = 'event'
+        verbose_name = 'Settings'
+        verbose_name_plural = 'Settings'
 
     def __str__(self):
         return str(self.event)
 
 
 class RSVP(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     person = models.OneToOneField(
         Person,
         on_delete=models.CASCADE,
-        primary_key=True
+        primary_key=True,
+        editable=False
     )
 
     class Meta:
         verbose_name = 'RSVP'
         verbose_name_plural = 'RSVP\'s'
-        order_with_respect_to = 'event'
+        ordering = ('-created_at',)
 
     def __str__(self):
         return "{0} @ {1}".format(self.person, self.event)
 
 
 class Checkin(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     person = models.OneToOneField(
         Person,
         on_delete=models.CASCADE,
-        primary_key=True
+        primary_key=True,
+        editable=False
     )
 
     class Meta:
-        order_with_respect_to = 'event'
+        ordering = ('-created_at',)

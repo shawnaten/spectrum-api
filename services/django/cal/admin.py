@@ -6,24 +6,28 @@ class CalendarAdmin(admin.ModelAdmin):
     readonly_fields = ("name", "cal_id",)
 
 
+class EventSettingsInline(admin.StackedInline):
+    model = EventSettings
+    readonly_fields = ("short_code",)
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class RSVPInline(admin.TabularInline):
+    model = RSVP
+    readonly_fields = ("event", "person")
+
+
+class CheckinInline(admin.TabularInline):
+    model = Checkin
+    readonly_fields = ("event", "person")
+
+
 class EventAdmin(admin.ModelAdmin):
     readonly_fields = ("calendar", "event_id", "location", "summary",
                        "description", "status", "start", "end", "recurring")
-
-
-class EventSettingsAdmin(admin.ModelAdmin):
-    readonly_fields = ("event", "short_code")
-
-
-class RSVPAdmin(admin.ModelAdmin):
-    readonly_fields = ("event", "person")
-
-
-class CheckinAdmin(admin.ModelAdmin):
-    readonly_fields = ("event", "person")
+    inlines = (EventSettingsInline, RSVPInline, CheckinInline)
 
 admin.site.register(Calendar, CalendarAdmin)
 admin.site.register(Event, EventAdmin)
-admin.site.register(EventSettings, EventSettingsAdmin)
-admin.site.register(RSVP, RSVPAdmin)
-admin.site.register(Checkin, CheckinAdmin)
