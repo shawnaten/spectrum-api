@@ -22,16 +22,19 @@ class Message(models.Model):
 
 
 class Session(models.Model):
-    id = models.CharField(
+    conv_id = models.CharField(
         max_length=36,
         default=gen_id,
-        primary_key=True
     )
     person = models.OneToOneField(
         Person,
         on_delete=models.CASCADE
     )
     finished = models.BooleanField(default=False)
+
+    def reset_conv_id(self):
+        self.conv_id = gen_id()
+        self.save()
 
     def __str__(self):
         person = self.person
