@@ -83,7 +83,7 @@ def rsvp(request):
         session.save()
         return context
 
-    event_settings = event.eventsettings
+    event_settings = event.settings
     rsvp_enabled = event_settings.rsvp_enabled
     rsvp_limit = event_settings.rsvp_limit
     rsvp_message = event_settings.rsvp_message

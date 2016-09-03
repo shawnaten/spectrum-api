@@ -52,7 +52,8 @@ class EventSettings(models.Model):
     event = models.OneToOneField(
         Event,
         on_delete=models.CASCADE,
-        primary_key=True
+        primary_key=True,
+        related_name="settings"
     )
     short_code = models.CharField(max_length=4, default=gen_checkin_code)
     rsvp_enabled = models.BooleanField(default=False)
