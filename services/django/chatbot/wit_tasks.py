@@ -10,13 +10,16 @@ from chatbot.models import Session, Message, SessionData
 from chatbot.tasks import send_sms
 from chatbot.wit_actions import actions
 
+
 wit = Wit(access_token=os.environ["WIT_ACCESS_TOKEN"], actions=actions)
 
 
 @shared_task
 def process_sms(phone, text):
     person, is_new_person = Person.objects.get_or_create(phone=phone)
-    session, is_new_session = Session.objects.get_or_create(person=person)
+    session, is_new_session = Session.objects.get_or_create(
+        person=person
+    )
 
     if is_new_person:
         sys_message, created = Message.objects.get_or_create(tag="welcome")
@@ -24,10 +27,7 @@ def process_sms(phone, text):
 
     try:
         context = {}
-        context = wit.run_actions(session.id, text, context)
-        session.refresh_from_db()
-        if session.finished:
-            session.delete()
+        context = wit.run_actions(session.conv_id, text, context)
     except Exception as err:
         logging.error(traceback.format_exc())
         sys_message, created = Message.objects.get_or_create(

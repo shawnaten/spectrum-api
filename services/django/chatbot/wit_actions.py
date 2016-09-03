@@ -10,68 +10,33 @@ from roster.models import Person
 from chatbot.models import Session, Message, SessionData
 from cal.models import Event, RSVP, Checkin, EventSettings
 from chatbot.tasks import send_sms
-
-
-def first_entity_value(entities, entity):
-    if entity not in entities.keys():
-        return ""
-    val = entities[entity][0]["value"]
-    if not val:
-        return ""
-    return val["value"] if isinstance(val, dict) else val
-
-
-def value(entities, session, key):
-    val = first_entity_value(entities, key)
-    session_data, created = SessionData.objects.get_or_create(
-        session=session,
-        key=key,
-        defaults={"val": val}
-    )
-    if val and not created:
-        session_data.val = val
-        session_data.save()
-
-    return session_data.val
-
-
-def datetime_value(entities, session):
-    string = value(entities, session, "datetime")
-    if not string:
-        return None
-    timestamp = rfc3339.rfc3339_to_timestamp(string)
-    return datetime.fromtimestamp(timestamp, timezone.utc)
-
-
-def finish(session, context, key, val=None):
-    context[key] = val if val is not None else True
-    session.save()
-    return context
+from chatbot.wit_util import value, datetime_value, finish, check_intent
 
 
 def send(request, response):
-    session = Session.objects.get(id=request["session_id"])
+    session = Session.objects.get(conv_id=request["session_id"])
     send_sms.delay(session.person.id, response["text"])
 
 
 def rsvp(request):
     context = request["context"]
     entities = request["entities"]
-    session = Session.objects.get(id=request["session_id"])
+    session = Session.objects.get(conv_id=request["session_id"])
     person = session.person
 
-    intent = value(entities, session, "intent")
+    check_intent(entities, session)
+
     rsvp_intent = value(entities, session, "rsvp_intent")
     event_summary = value(entities, session, "event_summary")
 
     if not event_summary:
-        return finish(session, context, "not_found")
+        return finish(session, context, "not_found", False)
 
     start = datetime_value(entities, session)
     if start:
         end = start + timedelta(days=1)
         if end < datetime.now(timezone.utc):
-            return finish(session, context, "not_found")
+            return finish(session, context, "not_found", False)
 
     try:
         if start:
@@ -82,7 +47,7 @@ def rsvp(request):
         else:
             event = Event.objects.get(summary__icontains=event_summary)
     except (ObjectDoesNotExist, MultipleObjectsReturned) as err:
-        return finish(session, context, "not_found")
+        return finish(session, context, "not_found", False)
 
     event_settings = event.settings
     rsvp_enabled = event_settings.rsvp_enabled
@@ -100,7 +65,7 @@ def rsvp(request):
         elif rsvp_count == 1:
             return finish(session, context, "single")
         else:
-            return finish(session, context, "count", rsvp_count)
+            return finish(session, context, "count", val=rsvp_count)
 
     elif rsvp_intent == "rsvp" and not rsvp_exists:
 
@@ -116,7 +81,7 @@ def rsvp(request):
             start = event.start.astimezone(timezone(-timedelta(hours=5)))
             context["time"] = datetime.strftime(start, "%a, %b %d, %I:%M %p")
             send_sms.delay(person.id, rsvp_message)
-            return finish(session, context, "location", event.location)
+            return finish(session, context, "location", val=event.location)
 
     elif rsvp_intent == "rsvp" and rsvp_exists:
         return finish(session, context, "rsvp_dup")
@@ -130,7 +95,7 @@ def rsvp(request):
 def first_name(request):
     context = request["context"]
     text = request["text"]
-    session = Session.objects.get(id=request["session_id"])
+    session = Session.objects.get(conv_id=request["session_id"])
     person = session.person
 
     try:
@@ -146,8 +111,11 @@ def first_name(request):
 def checkin(request):
     context = request["context"]
     entities = request["entities"]
-    session = Session.objects.get(id=request["session_id"])
+    session = Session.objects.get(conv_id=request["session_id"])
     person = session.person
+
+    check_intent(entities, session)
+
     short_code = value(entities, session, "short_code")
 
     try:
