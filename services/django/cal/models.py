@@ -87,11 +87,7 @@ class EventSettings(models.Model):
 class RSVP(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
-    person = models.OneToOneField(
-        Person,
-        on_delete=models.CASCADE,
-        primary_key=True
-    )
+    person = models.ForeignKey(Person, on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = 'RSVP'
@@ -105,11 +101,7 @@ class RSVP(models.Model):
 class Checkin(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
-    person = models.OneToOneField(
-        Person,
-        on_delete=models.CASCADE,
-        primary_key=True
-    )
+    person = models.ForeignKey(Person, on_delete=models.CASCADE)
 
     class Meta:
         ordering = ('-created_at',)
