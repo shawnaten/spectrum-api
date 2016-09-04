@@ -22,8 +22,8 @@ def process_sms(phone, text):
     )
 
     if is_new_person:
-        sys_message, created = Message.objects.get_or_create(tag="welcome")
-        send_sms.delay(person.id, sys_message.text)
+        message, created = Message.objects.get_or_create(tag="welcome")
+        send_sms.delay(person.id, message.id)
 
     try:
         context = {}

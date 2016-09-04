@@ -1,6 +1,7 @@
 import uuid
 
 from django.db import models
+from django.core.validators import RegexValidator
 
 from roster.models import Person
 
@@ -10,9 +11,15 @@ def gen_id():
     return id.hex
 
 
+alphanumeric = RegexValidator(
+    r"^[0-9a-zA-Z_]*$",
+    "Only alphanumeric and underscores are allowed."
+)
+
+
 class Message(models.Model):
-    tag = models.CharField(max_length=100)
-    text = models.CharField(
+    tag = models.CharField(max_length=100, validators=(alphanumeric,))
+    body = models.CharField(
         max_length=160,
         default="🤖 Whoops this message is empty."
     )

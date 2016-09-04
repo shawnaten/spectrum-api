@@ -3,6 +3,7 @@ import uuid
 from django.db import models
 
 from roster.models import Person
+from chatbot.models import Message
 
 
 def gen_checkin_code():
@@ -59,8 +60,21 @@ class EventSettings(models.Model):
     short_code = models.CharField(max_length=4, default=gen_checkin_code)
     rsvp_enabled = models.BooleanField(default=False)
     rsvp_limit = models.IntegerField(null=True, blank=True)
-    rsvp_message = models.CharField(blank=True, max_length=160)
+    rsvp_message = models.ForeignKey(
+        Message,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="rsvp_message"
+    )
     checkin_enabled = models.BooleanField(default=False)
+    checkin_message = models.ForeignKey(
+        Message,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="checkin_message"
+    )
 
     class Meta:
         verbose_name = 'Settings'
@@ -76,8 +90,7 @@ class RSVP(models.Model):
     person = models.OneToOneField(
         Person,
         on_delete=models.CASCADE,
-        primary_key=True,
-        editable=False
+        primary_key=True
     )
 
     class Meta:
@@ -95,8 +108,7 @@ class Checkin(models.Model):
     person = models.OneToOneField(
         Person,
         on_delete=models.CASCADE,
-        primary_key=True,
-        editable=False
+        primary_key=True
     )
 
     class Meta:

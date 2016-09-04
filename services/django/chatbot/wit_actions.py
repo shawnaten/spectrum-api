@@ -9,14 +9,14 @@ from django.db import DataError
 from roster.models import Person
 from chatbot.models import Session, Message, SessionData
 from cal.models import Event, RSVP, Checkin, EventSettings
-from chatbot.tasks import send_sms
+from chatbot.tasks import send_sms, send_sms_raw
 from chatbot.wit_util import value, datetime_value, finish, check_intent
 from backend.util import log_debug
 
 
 def send(request, response):
     session = Session.objects.get(conv_id=request["session_id"])
-    send_sms.delay(session.person.id, response["text"])
+    send_sms_raw.delay(session.person.id, response["text"])
 
 
 def rsvp(request):
@@ -85,7 +85,8 @@ def rsvp(request):
             context["summary"] = event.summary
             start = event.start.astimezone(timezone(-timedelta(hours=5)))
             context["time"] = datetime.strftime(start, "%a, %b %d, %I:%M %p")
-            send_sms.delay(person.id, rsvp_message)
+            if rsvp_message:
+                send_sms.delay(person.id, rsvp_message.id)
             return finish(session, context, "location", val=event.location)
 
     elif rsvp_type == "rsvp" and rsvp_exists:
@@ -129,6 +130,7 @@ def checkin(request):
         return finish(session, context, "not_found")
 
     checkin_enabled = event_settings.checkin_enabled
+    checkin_message = event_settings.checkin_message
     event = event_settings.event
 
     if not checkin_enabled:
@@ -156,6 +158,8 @@ def checkin(request):
     if not is_new_checkin:
         return finish(session, context, "duplicate")
 
+    if checkin_message:
+        send_sms.delay(person.id, checkin_message.id)
     return finish(session, context, "success")
 
 actions = {

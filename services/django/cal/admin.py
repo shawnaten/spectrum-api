@@ -16,12 +16,10 @@ class EventSettingsInline(admin.StackedInline):
 
 class RSVPInline(admin.TabularInline):
     model = RSVP
-    readonly_fields = ("event", "person")
 
 
 class CheckinInline(admin.TabularInline):
     model = Checkin
-    readonly_fields = ("event", "person")
 
 
 class EventAdmin(admin.ModelAdmin):
