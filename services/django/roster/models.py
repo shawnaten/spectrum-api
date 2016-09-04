@@ -32,6 +32,6 @@ class Person(models.Model):
 
     def __str__(self):
         if self.first and self.last:
-            return self.first + " " + self.last
+            return self.first + " " + self.last[:1]
         else:
-            return self.phone
+            return str(self.id)

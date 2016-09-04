@@ -29,6 +29,7 @@ class Message(models.Model):
 
 
 class Session(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
     conv_id = models.CharField(
         max_length=36,
         default=gen_id,
@@ -45,17 +46,14 @@ class Session(models.Model):
         self.save()
 
     def __str__(self):
-        person = self.person
-        if person.first and person.last:
-            return person.first + " " + person.last
-        else:
-            return person.phone
+        str(self.person)
 
 
 class SessionData(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
     session = models.ForeignKey(Session, on_delete=models.CASCADE)
     key = models.CharField(max_length=100)
     val = models.TextField(blank=True)
 
     def __str__(self):
-        return self.key
+        return self.created_at
