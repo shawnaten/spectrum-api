@@ -48,7 +48,7 @@ def rsvp(request):
             )
         else:
             event = Event.objects.get(
-                summary__icontains=event_summary
+                summary__icontains=event_summary,
                 start__gte=datetime.now(timezone.utc)
             )
     except (ObjectDoesNotExist, MultipleObjectsReturned) as err:
