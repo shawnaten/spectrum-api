@@ -22,8 +22,8 @@ def process_sms(phone, text):
     )
 
     if is_new_person:
-        message, created = Message.objects.get_or_create(tag="welcome")
-        send_sms.delay(person.id, message.id)
+        sys_message, created = Message.objects.get_or_create(tag="welcome")
+        send_sms.delay(person.id, sys_message.id)
 
     try:
         context = {}
@@ -32,8 +32,8 @@ def process_sms(phone, text):
         if session.finished:
             session.reset_conv_id()
     except Exception as err:
+        session.delete()
         logging.error(traceback.format_exc())
         sys_message, created = Message.objects.get_or_create(
             tag="wit_actions_error")
-        send_sms.delay(person.id, sys_message.text)
-        session.delete()
+        send_sms.delay(person.id, sys_message.id)
