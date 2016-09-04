@@ -39,10 +39,8 @@ def datetime_value(entities, session):
 
 def finish(session, context, key, reset_conv=True, val=None):
     context[key] = val if val is not None else True
-    if reset_conv:
-        session.reset_conv_id()
-    else:
-        session.save()
+    session.finished = reset_conv
+    session.save()
     return context
 
 
@@ -51,7 +49,7 @@ def check_intent(entities, session):
     new_intent = first_entity_value(entities, "intent")
     try:
         session_data = SessionData.objects.get(session=session, key="intent")
-        if new_val != session_data.val:
+        if new_intent != session_data.val:
             changed = True
     except ObjectDoesNotExist as err:
         changed = False

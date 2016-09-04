@@ -86,7 +86,7 @@ class RSVP(models.Model):
         ordering = ('-created_at',)
 
     def __str__(self):
-        return "{0} @ {1}".format(self.person, self.event)
+        return str(self.created_at)
 
 
 class Checkin(models.Model):
@@ -101,3 +101,6 @@ class Checkin(models.Model):
 
     class Meta:
         ordering = ('-created_at',)
+
+    def __str__(self):
+        return str(self.created_at)

@@ -28,6 +28,9 @@ def process_sms(phone, text):
     try:
         context = {}
         context = wit.run_actions(session.conv_id, text, context)
+        session.refresh_from_db()
+        if session.finished:
+            session.reset_conv_id()
     except Exception as err:
         logging.error(traceback.format_exc())
         sys_message, created = Message.objects.get_or_create(

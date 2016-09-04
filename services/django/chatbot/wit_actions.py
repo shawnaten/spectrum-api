@@ -11,6 +11,7 @@ from chatbot.models import Session, Message, SessionData
 from cal.models import Event, RSVP, Checkin, EventSettings
 from chatbot.tasks import send_sms
 from chatbot.wit_util import value, datetime_value, finish, check_intent
+from backend.util import log_debug
 
 
 def send(request, response):
@@ -24,10 +25,11 @@ def rsvp(request):
     session = Session.objects.get(conv_id=request["session_id"])
     person = session.person
 
+    log_debug(person)
     check_intent(entities, session)
 
-    rsvp_intent = value(entities, session, "rsvp_intent")
-    event_summary = value(entities, session, "event_summary")
+    rsvp_type = value(entities, session, "rsvp_type")
+    event_summary = value(entities, session, "event")
 
     if not event_summary:
         return finish(session, context, "not_found", False)
@@ -56,7 +58,7 @@ def rsvp(request):
     rsvp_count = RSVP.objects.filter(event=event).count()
     rsvp_exists = RSVP.objects.filter(event=event, person=person).exists()
 
-    if rsvp_intent == "count":
+    if rsvp_type == "count":
 
         if not rsvp_enabled:
             return finish(session, context, "disabled")
@@ -67,7 +69,7 @@ def rsvp(request):
         else:
             return finish(session, context, "count", val=rsvp_count)
 
-    elif rsvp_intent == "rsvp" and not rsvp_exists:
+    elif rsvp_type == "rsvp" and not rsvp_exists:
 
         if not rsvp_enabled:
             return finish(session, context, "disabled")
@@ -83,9 +85,9 @@ def rsvp(request):
             send_sms.delay(person.id, rsvp_message)
             return finish(session, context, "location", val=event.location)
 
-    elif rsvp_intent == "rsvp" and rsvp_exists:
+    elif rsvp_type == "rsvp" and rsvp_exists:
         return finish(session, context, "rsvp_dup")
-    elif rsvp_intent == "unrsvp" and rsvp_exists:
+    elif rsvp_type == "unrsvp" and rsvp_exists:
         RSVP.objects.filter(event=event, person=person).delete()
         return finish(session, context, "unrsvpd")
     else:

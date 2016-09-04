@@ -33,6 +33,7 @@ class Session(models.Model):
     finished = models.BooleanField(default=False)
 
     def reset_conv_id(self):
+        self.finished = False
         self.conv_id = gen_id()
         self.save()
 
