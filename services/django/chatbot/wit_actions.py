@@ -98,22 +98,6 @@ def rsvp(request):
         return finish(session, context, "unrsvp_dup")
 
 
-def first_name(request):
-    context = request["context"]
-    text = request["text"]
-    session = Session.objects.get(conv_id=request["session_id"])
-    person = session.person
-
-    try:
-        person.first = text
-        person.save()
-        context["success"] = True
-    except DataError as err:
-        context["failure"] = True
-
-    return context
-
-
 def checkin(request):
     context = request["context"]
     entities = request["entities"]
@@ -162,9 +146,129 @@ def checkin(request):
         send_sms.delay(person.id, checkin_message.id)
     return finish(session, context, "success")
 
+
+def name(request):
+    context = request["context"]
+    entities = request["entities"]
+    session = Session.objects.get(conv_id=request["session_id"])
+    person = session.person
+
+    check_intent(entities, session)
+
+    text = request["text"]
+    text = text.title()
+    tokens = text.split()
+
+    if len(tokens) < 2:
+        return finish(session, context, "failure", False)
+
+    person.first = tokens[0]
+    person.last = ""
+    for token in tokens[1:]:
+        person.last += token + " "
+    person.last = person.last.strip()
+
+    try:
+        person.save()
+    except DataError as err:
+        return finish(session, context, "failure", False)
+
+    return finish(session, context, "success", False)
+
+
+def email(request):
+    context = request["context"]
+    entities = request["entities"]
+    session = Session.objects.get(conv_id=request["session_id"])
+    person = session.person
+
+    check_intent(entities, session)
+
+    email = value(entities, session, "email")
+
+    if not email:
+        return finish(session, context, "failure", False)
+
+    person.email = email
+    try:
+        person.save()
+    except DataError as err:
+        return finish(session, context, "failure", False)
+
+    return finish(session, context, "success", False)
+
+
+def classification(request):
+    context = request["context"]
+    entities = request["entities"]
+    session = Session.objects.get(conv_id=request["session_id"])
+    person = session.person
+
+    check_intent(entities, session)
+
+    classification = value(entities, session, "classification")
+
+    if not classification:
+        return finish(session, context, "failure", False)
+
+    person.classification = classification
+    try:
+        person.save()
+    except DataError as err:
+        return finish(session, context, "failure", False)
+
+    return finish(session, context, "success", False)
+
+
+def photo_consent(request):
+    context = request["context"]
+    entities = request["entities"]
+    session = Session.objects.get(conv_id=request["session_id"])
+    person = session.person
+
+    check_intent(entities, session)
+
+    yes_no = value(entities, session, "yes_no")
+
+    if yes_no == "yes":
+        person.photo_consent = True
+        person.save()
+        return finish(session, context, "granted")
+    else:
+        person.photo_consent = False
+        person.save()
+        return finish(session, context, "denied")
+
+
+def check_profile(request):
+    context = request["context"]
+    entities = request["entities"]
+    session = Session.objects.get(conv_id=request["session_id"])
+    person = session.person
+
+    check_intent(entities, session)
+
+    form_str = "Name: {name}\nEmail: {email}\nClassification: {year}\n"
+    form_str += "Photos: {photos}"
+    year = person.classification if person.classification else "None"
+    year = year.title()
+    info = form_str.format(
+        name=person.first + " " + person.last if person.first else "None",
+        email=person.email if person.email else "None",
+        year=year,
+        photos="Accepted" if person.photo_consent else "Declined",
+    )
+
+    return finish(session, context, "info", val=info)
+
+
 actions = {
-    'send': send,
-    'rsvp': rsvp,
-    'first_name': first_name,
-    'checkin': checkin,
+    "send": send,
+    "rsvp": rsvp,
+    "name": name,
+    "checkin": checkin,
+    "email": email,
+    "classification": classification,
+    "photo_consent": photo_consent,
+    "check_profile": check_profile,
 }

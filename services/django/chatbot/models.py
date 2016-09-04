@@ -46,7 +46,7 @@ class Session(models.Model):
         self.save()
 
     def __str__(self):
-        str(self.person)
+        return str(self.conv_id)
 
 
 class SessionData(models.Model):
@@ -56,4 +56,4 @@ class SessionData(models.Model):
     val = models.TextField(blank=True)
 
     def __str__(self):
-        return self.created_at
+        return self.key
