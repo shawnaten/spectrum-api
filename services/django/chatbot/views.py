@@ -7,7 +7,8 @@ from twilio.util import RequestValidator
 import logging
 import os
 
-from chatbot.wit_tasks import process_sms
+# from chatbot.wit_tasks import process_sms
+from chatbot.process_tasks import process_message
 
 validator = RequestValidator(os.environ["TWILIO_AUTH_TOKEN"])
 
@@ -26,7 +27,10 @@ def sms(request):
     message = request.GET.get("Body", "")
 
     # Process message through wit
-    process_sms.delay(phone, message)
+    # process_sms.delay(phone, message)
+
+    # Process message using simple keywords
+    process_message.delay(phone, message)
 
     # Send empty response because we send messages seperately
     return HttpResponse(Response())
