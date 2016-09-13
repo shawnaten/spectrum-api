@@ -1,33 +1,30 @@
 import os
 import logging
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from celery import shared_task
 from django.core.exceptions import ObjectDoesNotExist
 
 from roster.models import Person
 from chatbot.models import Message
-from cal.models import EventSettings, Checkin
-from chatbot.sms_tasks import send_sms
+from cal.models import Event, EventSettings, Checkin
+from chatbot.sms_tasks import send_sms, send_sms_raw
 
 INTENT_CHECKIN = "checkin"
+INTENT_MORE_INFO = "more info"
 
 KEYWORDS = [
     INTENT_CHECKIN,
+    INTENT_MORE_INFO
 ]
 
 
 @shared_task
 def process_message(phone, message):
     person, is_new_person = Person.objects.get_or_create(phone=phone)
-    welcome_msg, _ = Message.objects.get_or_create(tag="welcome")
-    unsure_msg, _ = Message.objects.get_or_create(tag="unsure")
-    invalid_msg, _ = Message.objects.get_or_create(tag="invalid")
-    apple = "good"
 
-    apppple += "and green"
     if is_new_person:
-        send_sms.delay(person.id, welcome_msg.id)
+        send_sms.delay(person.id, "welcome")
 
     intent = determine_intent(message)
 
@@ -35,12 +32,15 @@ def process_message(phone, message):
 
         tokens = message.split()
         if len(tokens) != 2 or len(tokens[1]) != 4:
-            send_sms.delay(person.id, invalid_msg.id)
+            send_sms.delay(person.id, "invalid")
         else:
             checkin(person, tokens[1].lower())
 
+    elif intent == INTENT_MORE_INFO:
+        more_info(person)
+
     else:
-        send_sms.delay(person.id, unsure_msg.id)
+        send_sms.delay(person.id, "unsure")
 
 
 def determine_intent(message):
@@ -53,37 +53,32 @@ def determine_intent(message):
 
 
 def checkin(person, short_code):
-    not_found_msg, _ = Message.objects.get_or_create(tag="checkin_not_found")
-    early_msg, _ = Message.objects.get_or_create(tag="checkin_early")
-    late_msg, _ = Message.objects.get_or_create(tag="checkin_late")
-    duplicate_msg, _ = Message.objects.get_or_create(tag="checkin_duplicate")
-    success_msg, _ = Message.objects.get_or_create(tag="checkin_success")
 
     try:
         event_settings = EventSettings.objects.get(short_code=short_code)
     except ObjectDoesNotExist as err:
-        return send_sms.delay(person.id, not_found_msg.id)
+        return send_sms.delay(person.id, "checkin_not_found")
 
     checkin_enabled = event_settings.checkin_enabled
     checkin_message = event_settings.checkin_message
     event = event_settings.event
 
     if not checkin_enabled:
-        return send_sms.delay(person.id, not_found_msg.id)
+        return send_sms.delay(person.id, "checkin_not_found")
 
     now = datetime.now(timezone.utc)
     cutoff = event.start + (event.end - event.start) / 2
     if now < event.start:
-        return send_sms.delay(person.id, early_msg.id)
+        return send_sms.delay(person.id, "checkin_early")
     elif now > cutoff:
         checkin_exists = Checkin.objects.filter(
             person=person,
             event=event_settings.event
         ).exists()
         if checkin_exists:
-            return send_sms.delay(person.id, duplicate_msg.id)
+            return send_sms.delay(person.id, "checkin_duplicate")
         else:
-            return send_sms.delay(person.id, late_msg.id)
+            return send_sms.delay(person.id, "checkin_late")
 
     checkin_obj, is_new_checkin = Checkin.objects.get_or_create(
         person=person,
@@ -91,8 +86,43 @@ def checkin(person, short_code):
     )
 
     if not is_new_checkin:
-        return send_sms.delay(person.id, duplicate_msg.id)
+        return send_sms.delay(person.id, "checkin_duplicate")
 
     if checkin_message:
-        send_sms.delay(person.id, checkin_message.id)
-    return send_sms.delay(person.id, success_msg.id)
+        send_sms.delay(person.id, checkin_message.tag)
+    return send_sms.delay(person.id, "checkin_success")
+
+
+def more_info(person):
+    upcoming_events = get_upcoming_events()
+    send_sms.delay(person.id, "more_info")
+    send_sms_raw.delay(person.id, upcoming_events)
+
+
+def get_upcoming_events():
+    message, _ = Message.objects.get_or_create(tag="upcoming_events_base")
+    message = message.body
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(weeks=1)
+    events = Event.objects.filter(
+        start__range=[start, end]
+    )
+
+    day = -1
+    message += "\n"
+    for event in events:
+        start = event.start.astimezone(timezone(-timedelta(hours=5)))
+        end = event.end.astimezone(timezone(-timedelta(hours=5)))
+
+        if end - start == timedelta(hours=24):
+            continue
+
+        if start.day != day:
+            day = start.day
+            message += "\n" + datetime.strftime(start, "%A") + "\n"
+
+        when = datetime.strftime(start, "%I:%M %p")
+        message += "- {0} @ {1}\n".format(event.summary, when)
+
+    message = message.strip()
+    return message

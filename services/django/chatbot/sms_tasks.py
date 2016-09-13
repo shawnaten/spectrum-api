@@ -22,9 +22,9 @@ def send_sms_raw(person_id, message):
 
 
 @shared_task
-def send_sms(person_id, message_id):
+def send_sms(person_id, message_tag):
     person = Person.objects.get(pk=person_id)
-    message = Message.objects.get(pk=message_id)
+    message, _ = Message.objects.get_or_create(tag=message_tag)
 
     twilio.messages.create(
         to=person.phone,
