@@ -20,6 +20,7 @@ services:
     restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - postgres_backup:/var/lib/postgresql/backup
 
   rabbit:
     env_file:
@@ -46,3 +47,4 @@ networks:
 
 volumes:
   postgres_data:
+  postgres_backup:
