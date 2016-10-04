@@ -20,13 +20,16 @@ class Person(models.Model):
         (NOT_STUDENT, 'Not a Student'),
     )
 
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
+
     first = models.CharField(blank=True, max_length=100)
     last = models.CharField(blank=True, max_length=100)
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=15)
     classification = models.CharField(blank=True, max_length=15,
                                       choices=CLASS_CHOICES)
-    photo_consent = models.BooleanField(default=False)
+    photo_consent = models.BooleanField(blank=True, default=False)
 
     class Meta:
         verbose_name_plural = 'people'
@@ -35,4 +38,4 @@ class Person(models.Model):
         if self.first and self.last:
             return self.first + " " + self.last[:1]
         else:
-            return str(self.id)
+            return str(self.phone)
