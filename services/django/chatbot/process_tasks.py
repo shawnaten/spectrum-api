@@ -12,10 +12,12 @@ from chatbot.sms_tasks import send_sms, send_sms_raw
 
 INTENT_CHECKIN = "checkin"
 INTENT_MORE_INFO = "more info"
+INTENT_ATTEN_SUMMARY = "attendance summary"
 
 KEYWORDS = [
     INTENT_CHECKIN,
-    INTENT_MORE_INFO
+    INTENT_MORE_INFO,
+    INTENT_ATTEN_SUMMARY
 ]
 
 
@@ -41,6 +43,9 @@ def process_message(params):
 
     elif intent == INTENT_MORE_INFO:
         more_info(person)
+
+    elif intent == INTENT_ATTEN_SUMMARY:
+        send_sms_raw.delay(person.id, get_attendance_summary())
 
     else:
         send_sms.delay(person.id, "unsure")
@@ -128,4 +133,28 @@ def get_upcoming_events():
         message += "- {0} @ {1}\n".format(event.summary, when)
 
     message = message.strip()
+    return message
+
+
+def get_attendance_summary():
+    event_settings = []
+    events = []
+    checkins = {}
+    message = ""
+
+    event_settings = EventSettings.objects.filter(checkin_enabled=True)[:10]
+    for settings in event_settings:
+        events.append(settings.event)
+    for event in events:
+        checkins[event] = Checkins.objects.filter(event=event)
+
+    if len(events) == 0:
+        return "☹️ No attendance has been recorded at any event."
+
+    for event in events:
+        message += "{summary}: {count}\n".format(
+            summary=event.summary,
+            checkins=len(checkins[event])
+        )
+
     return message
