@@ -29,7 +29,10 @@ class Person(models.Model):
     phone = models.CharField(max_length=15)
     classification = models.CharField(blank=True, max_length=15,
                                       choices=CLASS_CHOICES)
-    photo_consent = models.BooleanField(blank=True, default=False)
+    photo_consent = models.BooleanField(default=False)
+
+    self_filled = models.BooleanField(default=False)
+    self_updated = models.DateTimeField(null=True)
 
     class Meta:
         verbose_name_plural = 'people'
