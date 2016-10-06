@@ -140,21 +140,27 @@ def get_attendance_summary():
     event_settings = []
     events = []
     checkins = {}
-    message = ""
+    total = 0
+    count = 0
+    message = "Attendance Summary\n\n"
 
     event_settings = EventSettings.objects.filter(checkin_enabled=True)[:10]
+    count = len(event_settings)
     for settings in event_settings:
         events.append(settings.event)
     for event in events:
-        checkins[event] = Checkins.objects.filter(event=event)
+        checkins[event] = Checkin.objects.filter(event=event)
+        total += len(checkins[event])
 
-    if len(events) == 0:
+    if count == 0:
         return "☹️ No attendance has been recorded at any event."
 
     for event in events:
-        message += "{summary}: {count}\n".format(
+        message += "{summary}: {attendance}\n".format(
             summary=event.summary,
-            checkins=len(checkins[event])
+            attendance=len(checkins[event])
         )
+
+    message += "\nAverage: {average}".format(average=int(total/count))
 
     return message
