@@ -20,7 +20,10 @@ KEYWORDS = [
 
 
 @shared_task
-def process_message(phone, message):
+def process_message(params):
+    phone = params.get("From", "")
+    message = params.get("Body", "")
+
     person, is_new_person = Person.objects.get_or_create(phone=phone)
 
     if is_new_person:

@@ -22,15 +22,8 @@ def sms(request):
         logging.warn("Request did not come from Twilio.")
         return HttpResponseNotFound()
 
-    # Find person who sent message
-    phone = request.GET.get("From", "")
-    message = request.GET.get("Body", "")
-
-    # Process message through wit
-    # process_sms.delay(phone, message)
-
     # Process message using simple keywords
-    process_message.delay(phone, message)
+    process_message.delay(request.GET)
 
     # Send empty response because we send messages seperately
     return HttpResponse(Response())
